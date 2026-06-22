@@ -1,0 +1,23 @@
+{
+  "name": "oceanlink-mvp",
+  "version": "1.0.0",
+  "description": "OceanLink - LoRa Mesh Maritime Distress Alert System",
+  "main": "server/index.js",
+  "scripts": {
+    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "start": "node server/index.js"
+  },
+  "keywords": [
+    "lora",
+    "mesh",
+    "maritime",
+    "distress",
+    "simulation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.0.0"
+  }
+}

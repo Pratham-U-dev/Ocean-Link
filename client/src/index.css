@@ -1,0 +1,155 @@
+@import "leaflet/dist/leaflet.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Scrollbars for Operational Dashboard feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0f1e;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e3a5f;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0080ff;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0a0f1e;
+  color: #e0eaff;
+  font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+}
+
+/* Leaflet Container customization to match Dark Theme */
+.leaflet-container {
+  background-color: #0a0f1e !important;
+  width: 100%;
+  height: 100%;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #0f1a2e !important;
+  color: #e0eaff !important;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  font-family: inherit;
+}
+
+.leaflet-popup-tip {
+  background: #0f1a2e !important;
+  border-left: 1px solid #1e3a5f;
+  border-bottom: 1px solid #1e3a5f;
+}
+
+/* Animations */
+
+/* Distress Sonar Rings (Red, 3 rings) */
+@keyframes sonar-expand {
+  0% {
+    transform: scale(0.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.sonar-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100px;
+  height: 100px;
+  margin-top: -50px;
+  margin-left: -50px;
+  border-radius: 50%;
+  border: 2px solid #ff3b3b;
+  opacity: 0;
+  pointer-events: none;
+  animation: sonar-expand 3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+}
+
+.sonar-ring-1 {
+  animation-delay: 0s;
+}
+
+.sonar-ring-2 {
+  animation-delay: 1s;
+}
+
+.sonar-ring-3 {
+  animation-delay: 2s;
+}
+
+/* Distress Boat pulsing animation */
+@keyframes red-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px rgba(255, 59, 59, 0.6));
+  }
+  50% {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 12px rgba(255, 59, 59, 1));
+  }
+}
+
+.pulse-distress {
+  animation: red-pulse 1.5s ease-in-out infinite;
+}
+
+/* Active hop lines: moving dash and pulsing color */
+@keyframes hop-dash-flow {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+
+.hop-line-active {
+  stroke: #ffaa00;
+  stroke-dasharray: 8, 4;
+  animation: hop-dash-flow 1.5s linear infinite;
+}
+
+/* SVG graph transitions & hover styles */
+.mesh-node {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.mesh-node:hover {
+  r: 8;
+  filter: drop-shadow(0 0 6px #0080ff);
+}
+
+.mesh-edge {
+  transition: all 0.3s ease;
+}
+
+.mesh-edge-active {
+  stroke: #ffaa00;
+  stroke-width: 3;
+  stroke-dasharray: 4, 2;
+  animation: hop-dash-flow 1s linear infinite;
+}
+
+.mesh-edge-normal {
+  stroke: #1e3a5f;
+  stroke-width: 1.5;
+}
+
+/* Glassmorphism utility panel */
+.panel-glass {
+  background: rgba(15, 26, 46, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid #1e3a5f;
+}
