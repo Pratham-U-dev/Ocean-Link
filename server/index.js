@@ -11,7 +11,7 @@ const WebSocket = require('ws');
 const cors = require('cors');
 
 const db = require('./db');
-const { getMeshTopology } = require('./mesh/network');
+const { getMeshTopology, isGateway } = require('./mesh/network');
 const { meshEmitter } = require('./mesh/flooding');
 const { handleIncomingPacket, setBroadcastHandler: setGatewayBroadcast } = require('./gateway');
 
@@ -19,9 +19,14 @@ const boatsRouter = require('./routes/boats');
 const { router: alertsRouter, setBroadcastHandler: setAlertsBroadcast } = require('./routes/alerts');
 const ackRouter = require('./routes/ack');
 const simulateRouter = require('./routes/simulate');
+const weatherRouter = require('./routes/weather');
+const riskRouter = require('./routes/risk');
+const wearablesRouter = require('./routes/wearables');
 
 const { startDriftSimulation, setBroadcastHandler: setMovementBroadcast } = require('./simulator/movement');
 const { startSimulator, setBroadcastHandler: setRunnerBroadcast } = require('./simulator/runner');
+const { startWeatherService, setBroadcastHandler: setWeatherBroadcast, getAllWeather } = require('./weather');
+const { scoreAllBoats } = require('./riskPrediction');
 
 const app = express();
 app.use(cors());
@@ -32,6 +37,9 @@ app.use('/api/boats', boatsRouter);
 app.use('/api/alerts', alertsRouter);
 app.use('/api/ack', ackRouter);
 app.use('/api/simulate', simulateRouter);
+app.use('/api/weather', weatherRouter);
+app.use('/api/risk', riskRouter);
+app.use('/api/wearables', wearablesRouter);
 
 app.get('/api/status', (req, res) => {
   res.json({ status: 'active', timestamp: Date.now() });
@@ -56,6 +64,7 @@ setGatewayBroadcast(broadcast);
 setAlertsBroadcast(broadcast);
 setMovementBroadcast(broadcast);
 setRunnerBroadcast(broadcast);
+setWeatherBroadcast(broadcast);
 
 // WebSocket connection lifecycle
 wss.on('connection', (ws) => {
@@ -68,13 +77,17 @@ wss.on('connection', (ws) => {
       hopPath: typeof a.hop_path === 'string' ? JSON.parse(a.hop_path) : a.hop_path
     }));
     const topology = getMeshTopology();
+    const weather = getAllWeather();
+    const risk = scoreAllBoats(boats);
 
     // Send complete database snapshot and connection topology immediately on connection
     ws.send(JSON.stringify({
       type: 'INIT',
       boats,
       alerts,
-      topology
+      topology,
+      weather,
+      risk
     }));
   } catch (err) {
     console.error('Failed to send INIT state to client:', err);
@@ -95,8 +108,8 @@ meshEmitter.on('packet', ({ packet, fromNode, toNode }) => {
     toNode
   });
 
-  // Shore gateway packet interceptor
-  if (toNode === 'SHORE_GW') {
+  // Shore gateway packet interceptor — any of the 4 coastal stations can receive traffic
+  if (isGateway(toNode)) {
     handleIncomingPacket(packet);
   }
 
@@ -106,10 +119,24 @@ meshEmitter.on('packet', ({ packet, fromNode, toNode }) => {
   }
 });
 
+// AI Risk Prediction loop: periodically re-score every tracked boat and push
+// the ranked list to dashboard clients (battery/weather/distance/staleness
+// based heuristic — see riskPrediction.js for the full explanation).
+const RISK_INTERVAL_MS = parseInt(process.env.RISK_INTERVAL_MS) || 15000;
+setInterval(() => {
+  try {
+    const boats = db.getAllBoats();
+    broadcast({ type: 'RISK_UPDATE', risk: scoreAllBoats(boats) });
+  } catch (err) {
+    console.error('Risk prediction loop failed:', err);
+  }
+}, RISK_INTERVAL_MS);
+
 // Start the server and start simulation runners
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`OceanLink Backend running on port ${PORT}`);
   startDriftSimulation();
   startSimulator();
+  startWeatherService();
 });

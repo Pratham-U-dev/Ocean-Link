@@ -19,6 +19,8 @@ initBoats();
 
 const getAllBoats = () => Array.from(boatsMap.values());
 
+const getBoatById = (id) => boatsMap.get(id) || null;
+
 const getAllAlerts = () =>
   Array.from(alertsMap.values()).sort((a, b) => b.triggered_at - a.triggered_at);
 
@@ -56,6 +58,7 @@ module.exports = {
       hop_path: hopPath,
       triggered_at: alert.timestamp || Date.now(),
       status: alert.status || 'ACTIVE',
+      rescue_recommendation: alert.rescueRecommendation || null,
       updated_at: Date.now()
     });
     return { changes: 1 };
@@ -67,5 +70,5 @@ module.exports = {
     alertsMap.set(id, { ...alert, status, updated_at: Date.now() });
     return { changes: 1 };
   },
-  getAllBoats, getAllAlerts, getAlertById, resetAllDB
+  getAllBoats, getBoatById, getAllAlerts, getAlertById, resetAllDB
 };
