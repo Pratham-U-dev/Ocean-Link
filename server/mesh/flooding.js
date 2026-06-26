@@ -2,7 +2,7 @@
 // Ponytail: Core flooding module propagating packet hops. 
 // Uses per-node deduplication cache keys (`${nodeId}_${msgId}`) to prevent infinite loops in cyclic graphs.
 const EventEmitter = require('events');
-const { getPathToGateway, getNeighbors } = require('./network');
+const { getPathToGateway, getNeighbors, isGateway } = require('./network');
 
 const meshEmitter = new EventEmitter();
 const dedupeCache = new Map();
@@ -70,7 +70,7 @@ const propagatePacket = (packet, fromNodeId) => {
         setTimeout(() => {
           meshEmitter.emit('packet', { packet: localPacket, fromNode: currentNode, toNode: neighbor });
           
-          if (neighbor !== 'SHORE_GW') {
+          if (!isGateway(neighbor)) {
             flood(neighbor, currentNode, localPacket);
           }
         }, delay);

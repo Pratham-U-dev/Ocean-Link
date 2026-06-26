@@ -2,6 +2,7 @@
 // Ponytail: Shore gateway processor that handles incoming packets from the mesh network.
 // Decoupled from WS implementation via a broadcast handler callback to prevent circular imports.
 const db = require('./db');
+const { recommendRescue } = require('./rescueRecommendation');
 
 let broadcast = () => {};
 
@@ -38,6 +39,8 @@ const handleIncomingPacket = (packet) => {
   } else if (packet.type === 'DISTRESS') {
     const existing = db.getAlertById(packet.msgId);
     if (!existing) {
+      const rescueRecommendation = recommendRescue({ lat: packet.lat, lng: packet.lng });
+
       const alert = {
         id: packet.msgId, // Use message ID as the database PK id
         boatId: packet.boatId,
@@ -47,10 +50,35 @@ const handleIncomingPacket = (packet) => {
         hopCount: packet.hopCount,
         hopPath: packet.hopPath || [packet.boatId],
         timestamp: packet.timestamp || Date.now(),
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        rescueRecommendation
       };
 
       db.insertAlert(alert);
+
+      // Flip the boat's own status to 'distress' so the map icon turns red.
+      // Preserve existing position/battery data so we don't overwrite with stale values.
+      const existingBoat = db.getBoatById(packet.boatId) || {};
+      db.upsertBoat({
+        id: packet.boatId,
+        lat: packet.lat,
+        lng: packet.lng,
+        battery: existingBoat.battery,
+        last_seen: existingBoat.last_seen,
+        status: 'distress'
+      });
+
+      broadcast({
+        type: 'BOAT_UPDATE',
+        boat: {
+          id: packet.boatId,
+          lat: packet.lat,
+          lng: packet.lng,
+          battery: existingBoat.battery,
+          last_seen: existingBoat.last_seen,
+          status: 'distress'
+        }
+      });
 
       // Log the discrete hop transitions inside the mesh_events table
       const path = packet.hopPath || [packet.boatId];
@@ -68,7 +96,8 @@ const handleIncomingPacket = (packet) => {
         type: 'DISTRESS_ALERT',
         alert: {
           ...alert,
-          hopPath: path
+          hopPath: path,
+          rescueRecommendation
         }
       });
     }
